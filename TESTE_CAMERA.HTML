@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Diagnóstico de Câmera</title>
+    <style>
+        body { background: #111; color: white; font-family: monospace; padding: 20px; }
+        #log { 
+            background: #222; border: 1px solid #444; padding: 10px; 
+            height: 150px; overflow-y: scroll; margin-bottom: 20px;
+        }
+        .error { color: #ff5555; font-weight: bold; }
+        .success { color: #55ff55; font-weight: bold; }
+        .info { color: #55ccff; }
+        
+        #preview-container { position: relative; width: 640px; height: 480px; border: 2px solid #555; }
+        video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        video { transform: scaleX(-1); }
+        canvas { transform: scaleX(-1); }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <h1>DIAGNÓSTICO DE CÂMERA E IA</h1>
+    
+    <div id="log"></div>
+
+    <button onclick="startTest()" style="padding: 15px 30px; font-size: 18px; cursor: pointer; background: #0077ff; color: white; border: none; border-radius: 5px;">INICIAR TESTE</button>
+    <br><br>
+
+    <div id="preview-container">
+        <video id="input_video" playsinline></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+
+    <script>
+        const logDiv = document.getElementById('log');
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+
+        function log(msg, type='info') {
+            const p = document.createElement('div');
+            p.className = type;
+            p.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(msg);
+        }
+
+        async function startTest() {
+            log("Iniciando teste...", 'info');
+
+            // 1. VERIFICAÇÃO DE PROTOCOLO
+            if (window.location.protocol === 'file:') {
+                log("ERRO CRÍTICO: Você abriu o arquivo direto (file://).", 'error');
+                log("SOLUÇÃO: Você PRECISA usar um servidor local (Live Server no VSCode ou Python).", 'error');
+                alert("ERRO: O navegador bloqueia a câmera neste modo. Use um servidor local.");
+                return;
+            } else {
+                log("Protocolo de rede OK (" + window.location.protocol + ")", 'success');
+            }
+
+            // 2. TESTE DE CÂMERA NATIVA (Sem IA)
+            log("Tentando acessar a câmera nativa...", 'info');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                log("Câmera Nativa encontrada! Permissão concedida.", 'success');
+                // Não atribuímos ao vídeo ainda, deixamos o MediaPipe fazer isso, mas sabemos que funciona.
+                stream.getTracks().forEach(track => track.stop()); // Para a câmera para a IA usar
+            } catch (err) {
+                log("ERRO AO ACESSAR CÂMERA: " + err.name + " - " + err.message, 'error');
+                log("DICA: Verifique se não há outro app usando a câmera ou se você bloqueou a permissão no cadeado da URL.", 'error');
+                return;
+            }
+
+            // 3. CARREGAMENTO DA IA
+            log("Carregando MediaPipe Face Mesh...", 'info');
+            
+            try {
+                const faceMesh = new FaceMesh({locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                }});
+
+                faceMesh.setOptions({
+                    maxNumFaces: 1,
+                    refineLandmarks: true,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+
+                faceMesh.onResults(onResults);
+
+                const camera = new Camera(videoElement, {
+                    onFrame: async () => {
+                        await faceMesh.send({image: videoElement});
+                    },
+                    width: 640,
+                    height: 480
+                });
+
+                log("Iniciando Câmera da IA...", 'info');
+                await camera.start();
+                log("Sistema rodando! Se você vê seu rosto com uma malha verde, está tudo certo.", 'success');
+
+            } catch (err) {
+                log("ERRO NO MEDIAPIPE: " + err.message, 'error');
+                log("DICA: Verifique sua conexão com a internet. O script não conseguiu baixar a IA.", 'error');
+            }
+        }
+
+        function onResults(results) {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+                drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {color: '#00FF00', lineWidth: 1});
+            }
+            canvasCtx.restore();
+        }
+    </script>
+</body>
+</html>
