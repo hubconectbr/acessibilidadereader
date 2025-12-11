@@ -3,131 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitor Facial - Calibração Manual</title>
+    <title>Leitor Neural V8 - Full Face</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #121212; font-family: 'Segoe UI', sans-serif; }
+        :root {
+            --primary: #00f3ff; /* Ciano Neon */
+            --secondary: #ff0055; /* Rosa Neon */
+            --stable: #00ff66; /* Verde Estável */
+            --bg: #050505;
+            --glass: rgba(15, 20, 30, 0.9);
+        }
+        
+        body { margin: 0; overflow: hidden; background-color: var(--bg); font-family: 'Segoe UI', monospace; color: white; }
 
         /* ====================
-           1. TELA DE CALIBRAÇÃO
+           1. SETUP / INTRO
            ==================== */
-        #intro-layer {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: #050505;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.8s ease;
+        #setup-layer {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, #112 0%, #000 100%);
+            z-index: 2000; display: flex; align-items: center; justify-content: center;
+            transition: top 0.8s cubic-bezier(0.7, 0, 0.3, 1);
         }
 
-        #intro-content {
-            position: relative;
-            width: 640px;
-            height: 480px;
-            background-color: #1a1a1a;
-            border: 2px solid #333;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 50px rgba(0, 255, 204, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .dashboard {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+            width: 900px; height: 550px;
+            background: rgba(20, 20, 25, 0.8);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 60px rgba(0, 243, 255, 0.05);
+            backdrop-filter: blur(15px); border-radius: 20px; padding: 40px; position: relative;
         }
 
-        /* Vídeo e Canvas */
-        #intro-video, #intro-canvas {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            transform: scaleX(-1); /* Espelhar */
-            object-fit: cover;
-        }
+        /* Decoração de Cantos */
+        .corner { position: absolute; width: 30px; height: 30px; border: 3px solid var(--primary); }
+        .tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+        .tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; }
+        .bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; }
+        .br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
 
-        #intro-ui {
-            margin-top: 20px;
-            text-align: center;
-            color: white;
-            z-index: 2001;
-        }
+        h2 { color: var(--primary); margin: 0 0 15px 0; font-weight: 300; letter-spacing: 4px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 10px; }
 
-        h1 { margin: 0; font-weight: 300; letter-spacing: 2px; color: #00ffcc; }
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed #444; border-radius: 12px; height: 200px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: 0.3s; cursor: pointer; background: rgba(0,0,0,0.3);
+        }
+        .upload-zone:hover { border-color: var(--primary); background: rgba(0, 243, 255, 0.05); }
+        .upload-zone.valid { border-style: solid; border-color: var(--primary); background: rgba(0, 243, 255, 0.1); }
+        .icon-upload { font-size: 3rem; margin-bottom: 10px; opacity: 0.7; }
+        #file-input { display: none; }
+
+        /* Camera Frame */
+        .cam-frame {
+            flex-grow: 1; background: #000; border-radius: 8px; border: 1px solid #333;
+            position: relative; overflow: hidden;
+        }
+        #intro-video, #tracking-canvas { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            object-fit: cover; transform: scaleX(-1); 
+        }
+        #tracking-canvas { z-index: 2; } 
         
-        .status-msg { 
-            font-size: 1.1rem; margin: 15px 0; color: #ffcc00; font-weight: bold; min-height: 25px;
+        .scan-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: var(--primary); box-shadow: 0 0 15px var(--primary);
+            animation: scan 2s infinite ease-in-out; opacity: 0.8; z-index: 3;
         }
+        @keyframes scan { 0% { top: -10%; opacity:0; } 15% { opacity:1; } 85% { opacity:1; } 100% { top: 110%; opacity:0; } }
 
-        /* Botão Grande para Forçar Câmera */
-        #btn-start-cam {
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            background: #0077ff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 119, 255, 0.4);
-            transition: 0.2s;
+        #btn-start {
+            margin-top: 20px; padding: 15px; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px;
+            background: rgba(0, 243, 255, 0.05); color: #555; border: 1px solid #333;
+            text-transform: uppercase; cursor: not-allowed; transition: 0.3s;
         }
-        #btn-start-cam:hover { background: #0055bb; transform: scale(1.05); }
-
-        /* Bolinhas de Piscar */
-        .blink-status {
-            margin-top: 15px;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            opacity: 0; /* Escondido até a câmera ligar */
-            transition: opacity 0.5s;
+        #btn-start.ready {
+            background: var(--primary); color: #000; cursor: pointer; box-shadow: 0 0 25px rgba(0, 243, 255, 0.4);
         }
-        .dot {
-            width: 20px; height: 20px;
-            border-radius: 50%;
-            background: #333;
-            border: 1px solid #555;
-            transition: 0.2s;
-        }
-        .dot.active { background: #00ffcc; box-shadow: 0 0 15px #00ffcc; }
 
         /* ====================
-           2. TELA DE LEITURA
+           2. BARRA DE FERRAMENTAS SUPERIOR (TOP HUD)
            ==================== */
-        #viewport-container {
-            width: 100vw; height: 100vh;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            background-color: #1a1a1a;
-            opacity: 0; 
+        #top-bar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 70px;
+            background: var(--glass);
+            border-bottom: 2px solid var(--primary);
+            display: none; /* Ativa na leitura */
+            z-index: 1000;
+            display: none; 
+            align-items: center; justify-content: space-between;
+            padding: 0 30px; box-sizing: border-box;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 5px 30px rgba(0,0,0,0.8);
         }
 
-        #pdf-wrapper {
-            width: 90vw;
-            height: auto;
-            transform-origin: top center;
-            transition: transform 0.1s linear;
-            margin-top: 20px;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-        }
-        embed { width: 100%; height: 2000px; display: block; }
-
-        /* UI DE LEITURA */
-        #ui-layer {
-            position: fixed; top: 20px; right: 20px; width: 280px;
-            padding: 20px; background: rgba(30, 30, 30, 0.9);
-            border-radius: 12px; border-left: 4px solid #00ffcc;
-            color: #ececec; display: none;
-        }
-        .indicator { width: 10px; height: 10px; border-radius: 50%; background: #555; display: inline-block; margin-right: 5px; }
-        .indicator.active { background: #00ffcc; }
+        .bar-section { display: flex; align-items: center; gap: 20px; }
         
-        #crosshair {
-            position: fixed; top: 50%; left: 50%; width: 8px; height: 8px;
-            background: rgba(255, 0, 0, 0.4); border-radius: 50%;
-            transform: translate(-50%, -50%); display: none;
+        /* Semáforo de Rolagem */
+        .semaphore-container {
+            position: relative; width: 300px; height: 10px; background: #222; 
+            border-radius: 5px; overflow: hidden; border: 1px solid #444;
         }
+        .sem-center-marker { position: absolute; left: 50%; width: 2px; height: 100%; background: #555; transform: translateX(-50%); }
+        
+        /* O "Cursor" que se move */
+        #head-cursor {
+            position: absolute; left: 50%; top: -3px; width: 16px; height: 16px; 
+            background: var(--stable); border-radius: 50%; 
+            transform: translateX(-50%); box-shadow: 0 0 10px var(--stable);
+            transition: left 0.1s ease-out, background 0.2s;
+        }
+
+        /* Indicadores de Status */
+        .status-light {
+            width: 12px; height: 12px; border-radius: 50%; background: #333; border: 1px solid #555;
+            transition: 0.2s; margin-right: 5px;
+        }
+        .status-group { display: flex; align-items: center; color: #aaa; font-size: 0.8rem; font-weight: bold; }
+        
+        /* Cores Ativas */
+        .status-light.blink-l { background: var(--secondary); box-shadow: 0 0 10px var(--secondary); }
+        .status-light.blink-r { background: var(--primary); box-shadow: 0 0 10px var(--primary); }
+        
+        .zoom-display { font-family: monospace; font-size: 1.2rem; color: var(--primary); font-weight: bold; }
+
+        /* ====================
+           3. VIEWPORT
+           ==================== */
+        #viewport {
+            position: fixed; top: 70px; left: 0; right: 0; bottom: 0; /* Começa abaixo da barra */
+            background: #151515; overflow-y: scroll; scroll-behavior: smooth;
+        }
+        #pdf-container {
+            width: 90%; max-width: 1200px; margin: 0 auto;
+            padding-top: 40px; padding-bottom: 800px;
+            transform-origin: top center; transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        iframe { width: 100%; height: 2500px; border: none; background: white; border-radius: 4px; display: block; }
+
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -137,91 +150,232 @@
 </head>
 <body>
 
-    <div id="intro-layer">
-        <div id="intro-content">
-            <div id="placeholder-text" style="color: #555;">Aguardando Câmera...</div>
-            <video id="intro-video" playsinline></video>
-            <canvas id="intro-canvas"></canvas>
-        </div>
-        
-        <div id="intro-ui">
-            <h1>CALIBRAÇÃO FACIAL</h1>
-            
-            <div style="margin-top: 20px;">
-                <button id="btn-start-cam" onclick="startSystem()">LIGAR CÂMERA</button>
+    <div id="setup-layer">
+        <div class="dashboard">
+            <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+
+            <div class="panel-left" style="display:flex; flex-direction:column; justify-content:center;">
+                <h2>1. Arquivo</h2>
+                <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                    <div id="upload-icon" class="icon-upload">📂</div>
+                    <div id="upload-text">Selecionar PDF</div>
+                    <input type="file" id="file-input" accept=".pdf">
+                </div>
+                <div style="margin-top:20px; color:#666; font-size:0.8rem">STATUS: <span id="sys-status" style="color:var(--primary)">Aguardando...</span></div>
             </div>
 
-            <div id="cam-status" class="status-msg">Clique acima para iniciar</div>
-
-            <div id="blink-ui" class="blink-status">
-                <div style="color: #aaa; margin-bottom: 5px; width: 100%;">Pisque 2x para entrar</div>
-                <div id="dot1" class="dot"></div>
-                <div id="dot2" class="dot"></div>
+            <div class="panel-right" style="display:flex; flex-direction:column;">
+                <h2>2. Rastreamento Facial</h2>
+                <div class="cam-frame">
+                    <video id="intro-video" playsinline muted autoplay></video>
+                    <canvas id="tracking-canvas"></canvas>
+                    <div class="scan-line"></div>
+                </div>
+                <button id="btn-start" onclick="activateReader()">INICIAR SISTEMA</button>
             </div>
         </div>
     </div>
 
-    <div id="crosshair"></div>
-    <div id="viewport-container">
-        <div id="pdf-wrapper">
-            <embed id="pdf-embed" src="https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf#page=1" type="application/pdf">
+    <div id="top-bar">
+        <div class="bar-section">
+            <div class="status-group">
+                <div id="led-prev" class="status-light"></div> <span>VOLTAR (Esq)</span>
+            </div>
+            <div class="status-group">
+                <div id="led-next" class="status-light"></div> <span>AVANÇAR (Dir)</span>
+            </div>
+        </div>
+
+        <div class="bar-section" style="flex-direction: column; gap: 5px;">
+            <div style="font-size: 0.7rem; color: #888; letter-spacing: 2px;">RASTREAMENTO VERTICAL</div>
+            <div class="semaphore-container">
+                <div class="sem-center-marker"></div>
+                <div id="head-cursor"></div>
+            </div>
+        </div>
+
+        <div class="bar-section">
+            <div style="text-align: right;">
+                <div style="font-size: 0.7rem; color: #888;">ZOOM ÓPTICO</div>
+                <div id="zoom-txt" class="zoom-display">100%</div>
+            </div>
         </div>
     </div>
 
-    <div id="ui-layer">
-        <h2 style="margin:0 0 10px 0; font-size:1rem; color:#00ffcc;">LEITOR ATIVO</h2>
-        <div style="font-size: 0.8rem; line-height: 1.6;">
-            <div><span id="ind-scroll" class="indicator"></span> Rolagem (Cabeça)</div>
-            <div><span id="ind-page" class="indicator"></span> Pág (Piscar Dir/Esq)</div>
-            <hr style="border-color: #444;">
-            <div style="opacity: 0.7;">Olhos fechados (2.5s) trava tela.</div>
+    <div id="viewport">
+        <div id="pdf-container">
+            <iframe id="pdf-frame" src=""></iframe>
         </div>
     </div>
 
     <script>
-        // CONFIGURAÇÕES
+        // CONFIG V8
         const CONFIG = {
-            BLINK_THRESHOLD: 0.20, NEUTRAL_OPEN: 0.35,
-            DOUBLE_BLINK_SPEED: 800,
-            DEAD_ZONE_Y: 0.08, SCROLL_SPEED: 25,
-            INITIAL_ZOOM: 1.0, MAX_ZOOM: 1.25
+            SMOOTHING: 0.12, 
+            DEAD_ZONE: 0.06, 
+            SCROLL_SPEED: 80,    // AUMENTADO PARA MAIS VELOCIDADE
+            BLINK_THRESH: 0.23,  // AJUSTADO PARA CAPTAR MELHOR
+            OPEN_THRESH: 0.35, 
+            ZOOM_TRIGGER: 0.42, 
+            ZOOM_MIN: 1.0, 
+            ZOOM_MAX: 1.35
         };
 
-        const STATE = {
-            mode: 'SETUP', // SETUP -> CALIBRATION -> READING
-            blinkCount: 0, lastBlinkTime: 0, isBlinking: false,
-            currentScale: CONFIG.INITIAL_ZOOM, targetScale: CONFIG.INITIAL_ZOOM,
-            scrollVelocityY: 0, currentPage: 1, lastNavTime: 0
-        };
+        const STATE = { active: false, pdfUrl: null, rawNoseY: 0, smoothNoseY: 0, targetScroll: 0, currentScale: 1.0, page: 1, lastPageTime: 0 };
 
         // DOM
-        const statusMsg = document.getElementById('cam-status');
-        const btnStart = document.getElementById('btn-start-cam');
-        const blinkUI = document.getElementById('blink-ui');
-        const introLayer = document.getElementById('intro-layer');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const btnStart = document.getElementById('btn-start');
+        const sysStatus = document.getElementById('sys-status');
+        const pdfFrame = document.getElementById('pdf-frame');
         const introVideo = document.getElementById('intro-video');
-        const introCanvas = document.getElementById('intro-canvas');
-        const introCtx = introCanvas.getContext('2d');
-        const dot1 = document.getElementById('dot1');
-        const dot2 = document.getElementById('dot2');
+        const trackingCanvas = document.getElementById('tracking-canvas');
+        const trackingCtx = trackingCanvas.getContext('2d');
         
-        // Função Iniciadora (Chamada pelo Botão)
-        function startSystem() {
-            btnStart.style.display = 'none'; // Some o botão
-            statusMsg.innerText = "Solicitando Permissão da Câmera...";
-            statusMsg.style.color = "white";
+        // Elementos Top Bar
+        const headCursor = document.getElementById('head-cursor');
+        const ledPrev = document.getElementById('led-prev');
+        const ledNext = document.getElementById('led-next');
 
-            // Inicializa a IA
-            const faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
-            faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-            faceMesh.onResults(onResults);
+        // 1. UPLOAD
+        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        function handleFile(file) {
+            if(file && file.name.toLowerCase().endsWith('.pdf')) {
+                STATE.pdfUrl = URL.createObjectURL(file);
+                document.getElementById('upload-icon').innerText = "✅";
+                document.getElementById('upload-text').innerText = file.name;
+                dropZone.classList.add('valid');
+                sysStatus.innerText = "PDF Carregado. Iniciando Sensores...";
+                pdfFrame.src = STATE.pdfUrl + "#page=1";
+                initCamera();
+            } else { alert("Apenas PDF."); }
+        }
 
-            // Inicia a Câmera
-            const camera = new Camera(introVideo, {
-                onFrame: async () => { await faceMesh.send({image: introVideo}); },
-                width: 640, height:
+        // 2. CAMERA & FULL FACE MESH
+        async function initCamera() {
+            try {
+                const faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
+                faceMesh.setOptions({maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5});
+                faceMesh.onResults(onResults);
+
+                const camera = new Camera(introVideo, {
+                    onFrame: async () => { await faceMesh.send({image: introVideo}); },
+                    width: 320, height: 240
+                });
+
+                await camera.start();
+                sysStatus.innerText = "Sistemas Prontos.";
+                btnStart.classList.add('ready');
+            } catch (err) {
+                sysStatus.innerText = "Erro: " + err.message; sysStatus.style.color = "red";
+            }
+        }
+
+        function activateReader() {
+            STATE.active = true;
+            document.getElementById('setup-layer').style.top = "-100vh";
+            document.getElementById('top-bar').style.display = "flex"; // Mostra barra superior
+            animate();
+        }
+
+        // 3. LÓGICA
+        function onResults(results) {
+            // Desenho na Calibração (COM CONTORNO OVAL)
+            if(!STATE.active) {
+                trackingCanvas.width = introVideo.videoWidth; trackingCanvas.height = introVideo.videoHeight;
+                trackingCtx.save(); trackingCtx.clearRect(0, 0, trackingCanvas.width, trackingCanvas.height);
+                
+                if(results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                    const lm = results.multiFaceLandmarks[0];
+                    // Tesselation (Interno)
+                    drawConnectors(trackingCtx, lm, FACEMESH_TESSELATION, {color: '#00f3ff20', lineWidth: 1});
+                    // OVAL (Externo - Rosto Redondo Fix)
+                    drawConnectors(trackingCtx, lm, FACEMESH_FACE_OVAL, {color: '#00f3ff', lineWidth: 2});
+                    
+                    drawConnectors(trackingCtx, lm, FACEMESH_RIGHT_EYE, {color: '#00f3ff', lineWidth: 2});
+                    drawConnectors(trackingCtx, lm, FACEMESH_LEFT_EYE, {color: '#00f3ff', lineWidth: 2});
+                }
+                trackingCtx.restore();
+            }
+
+            if(!STATE.active || !results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) return;
+
+            const face = results.multiFaceLandmarks[0];
+            const now = Date.now();
+            const dist = (p1, p2) => Math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2);
+            
+            // EAR
+            const earL = dist(face[159], face[145]) / dist(face[33], face[133]);
+            const earR = dist(face[386], face[374]) / dist(face[362], face[263]);
+            const earAvg = (earL + earR) / 2;
+            const noseY = face[1].y - 0.5;
+
+            // Suavização
+            STATE.smoothNoseY = (1 - CONFIG.SMOOTHING) * STATE.smoothNoseY + CONFIG.SMOOTHING * noseY;
+
+            // ROLAGEM (Joystick)
+            if (Math.abs(STATE.smoothNoseY) > CONFIG.DEAD_ZONE) {
+                const dir = Math.sign(STATE.smoothNoseY);
+                const val = Math.abs(STATE.smoothNoseY) - CONFIG.DEAD_ZONE;
+                STATE.targetScroll = dir * val * CONFIG.SCROLL_SPEED;
+                
+                // Visual Barra Superior (Semáforo)
+                // Mapeia movimento (-0.1 a 0.1) para porcentagem (0% a 100%)
+                // Centro é 50%. Cima < 50%, Baixo > 50%
+                let visualPos = 50 + (STATE.smoothNoseY * 300); 
+                visualPos = Math.max(10, Math.min(90, visualPos)); // Clamp
+                
+                headCursor.style.left = visualPos + "%";
+                
+                if(dir > 0) { // Baixo (Ciano)
+                    headCursor.style.background = "#00f3ff";
+                    headCursor.style.boxShadow = "0 0 10px #00f3ff";
+                } else { // Cima (Rosa)
+                    headCursor.style.background = "#ff0055";
+                    headCursor.style.boxShadow = "0 0 10px #ff0055";
+                }
+            } else {
+                STATE.targetScroll = 0;
+                headCursor.style.left = "50%";
+                headCursor.style.background = "#00ff66"; // Verde Estável
+                headCursor.style.boxShadow = "0 0 10px #00ff66";
+            }
+
+            // ZOOM
+            let targetZ = CONFIG.ZOOM_MIN;
+            if(earAvg > CONFIG.ZOOM_TRIGGER) targetZ = CONFIG.ZOOM_MAX;
+            STATE.currentScale = (1 - 0.05) * STATE.currentScale + 0.05 * targetZ;
+            document.getElementById('zoom-txt').innerText = Math.round(STATE.currentScale * 100) + "%";
+
+            // NAVEGAÇÃO DE PÁGINA
+            if(now - STATE.lastPageTime > 1500) {
+                if(earR < CONFIG.BLINK_THRESH && earL > CONFIG.OPEN_THRESH) {
+                    changePage(1); 
+                    STATE.lastPageTime = now;
+                    ledNext.classList.add('blink-r'); setTimeout(() => ledNext.classList.remove('blink-r'), 300);
+                }
+                else if(earL < CONFIG.BLINK_THRESH && earR > CONFIG.OPEN_THRESH) {
+                    changePage(-1); 
+                    STATE.lastPageTime = now;
+                    ledPrev.classList.add('blink-l'); setTimeout(() => ledPrev.classList.remove('blink-l'), 300);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if(!STATE.active) return;
+            document.getElementById('pdf-container').style.transform = `scale(${STATE.currentScale})`;
+            if(Math.abs(STATE.targetScroll) > 0.1) document.getElementById('viewport').scrollTop += STATE.targetScroll;
+        }
+
+        function changePage(dir) {
+            STATE.page += dir; if(STATE.page < 1) STATE.page = 1;
+            pdfFrame.src = `${STATE.pdfUrl}#page=${STATE.page}`;
+            // RESETAR PARA O TOPO DA PÁGINA
+            document.getElementById('viewport').scrollTop = 0;
+        }
+    </script>
+</body>
+</html>
