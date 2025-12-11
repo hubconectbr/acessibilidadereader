@@ -59,34 +59,6 @@
         #tracking-canvas { z-index: 2; }
         .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--primary); box-shadow: 0 0 15px var(--primary); animation: scan 2s infinite ease-in-out; opacity: 0.8; z-index: 3; }
         @keyframes scan { 0% { top: -10%; opacity:0; } 15% { opacity:1; } 85% { opacity:1; } 100% { top: 110%; opacity:0; } }
-        
-        /* NOVO: STATUS EM TEMPO REAL */
-        #realtime-status {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 5px 10px;
-            box-sizing: border-box;
-            z-index: 4;
-            font-size: 0.7rem;
-            color: #ccc;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: monospace;
-        }
-        #status-blink {
-            color: var(--primary);
-            font-weight: bold;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-        }
-        #status-blink.detected {
-            color: var(--danger);
-            text-shadow: 0 0 5px var(--danger);
-        }
 
         /* HUD */
         #top-bar { position: fixed; top: 0; left: 0; width: 100%; height: 70px; background: var(--glass); border-bottom: 2px solid var(--primary); display: none; z-index: 1000; align-items: center; justify-content: space-between; padding: 0 30px; box-sizing: border-box; backdrop-filter: blur(10px); transition: border-color 0.3s; }
@@ -109,40 +81,6 @@
         #viewport { position: fixed; top: 70px; left: 0; right: 0; bottom: 0; background: #151515; overflow-y: scroll; scroll-behavior: smooth; }
         #pdf-container { width: 90%; max-width: 1200px; margin: 0 auto; padding-top: 40px; padding-bottom: 800px; transform-origin: top center; transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
         iframe { width: 100%; height: 2500px; border: none; background: white; border-radius: 4px; display: block; }
-    
-        /* MODIFICAÇÕES - RESPONSIVIDADE MOBILE (Mobile First) */
-        @media (max-width: 992px) {
-            /* Garante a tela cheia para validação biométrica no celular */
-            #setup-layer { 
-                align-items: flex-start;
-                overflow-y: auto;
-            }
-            .dashboard {
-                grid-template-columns: 1fr; /* Coluna única */
-                width: 100vw; /* Ocupa a largura total */
-                height: auto;
-                padding: 20px 10px;
-                margin: 0;
-                border-radius: 0;
-                box-shadow: none;
-            }
-            .panel-right {
-                order: -1; /* Move a câmera para o topo */
-                margin-bottom: 20px;
-            }
-            .cam-frame {
-                height: 300px; /* Altura fixa para a câmera no celular */
-            }
-            #top-bar {
-                height: auto;
-                padding: 10px 15px;
-                flex-direction: column;
-            }
-            .bar-section {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-        }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -155,10 +93,22 @@
     <div id="setup-layer">
         <div class="dashboard">
             <div class="panel-left">
+                <h2>1. Documento Oficial</h2>
+                <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                    <div id="upload-icon" class="icon-upload">📂</div>
+                    <div id="upload-text">Selecionar PDF (Resolução 454)</div>
+                    <input type="file" id="file-input" accept=".pdf">
+                </div>
+                
+                <div id="progress-container">
+                    <div class="progress-track"><div id="prog-fill" class="progress-fill"></div></div>
+                    <div id="prog-txt" class="progress-txt">0%</div>
+                </div>
+
                 <h2>2. Validação Biométrica</h2>
                 <div class="training-container">
-                    <div class="step-item current" id="step-1"><div class="step-num">1</div><div class="step-text">Pisque LADO DIREITO da Tela</div><div class="step-icon">😉</div></div>
-                    <div class="step-item" id="step-2"><div class="step-num">2</div><div class="step-text">Pisque LADO ESQUERDO da Tela</div><div class="step-icon">😉</div></div>
+                    <div class="step-item current" id="step-1"><div class="step-num">1</div><div class="step-text">Pisque ESQUERDO</div><div class="step-icon">😉</div></div>
+                    <div class="step-item" id="step-2"><div class="step-num">2</div><div class="step-text">Pisque DIREITO</div><div class="step-icon">😉</div></div>
                     <div class="step-item" id="step-3"><div class="step-num">3</div><div class="step-text">Pisque DUPLO (Treino)</div><div class="step-icon">😑</div></div>
                     <div class="step-item" id="step-4"><div class="step-num">4</div><div class="step-text">Pisque DUPLO (Entrar)</div><div class="step-icon">🚀</div></div>
                 </div>
@@ -171,31 +121,12 @@
                     <video id="intro-video" playsinline muted autoplay></video>
                     <canvas id="tracking-canvas"></canvas>
                     <div class="scan-line"></div>
-                    <div id="realtime-status">
-                        <div id="status-blink">Aguardando Captura</div>
-                        <div id="status-data"></div>
-                    </div>
-                    </div>
+                </div>
                 <div style="text-align: center; margin-top: 15px; font-size: 0.8rem; color: #888;">ABRA A BOCA PARA ATIVAR A LEITURA DA RESOLUÇÃO</div>
             </div>
         </div>
     </div>
 
-    <div id="upload-layer" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg); z-index: 1500; display: none; align-items: center; justify-content: center;">
-        <div style="width: 90%; max-width: 500px; padding: 30px; background: rgba(20, 20, 25, 0.9); border-radius: 12px; border: 1px solid rgba(0, 243, 255, 0.2);">
-            <h2>1. Documento Oficial</h2>
-            <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-                <div id="upload-icon" class="icon-upload">📂</div>
-                <div id="upload-text">Selecionar PDF (Resolução 454)</div>
-                <input type="file" id="file-input" accept=".pdf">
-            </div>
-            <div id="progress-container">
-                <div class="progress-track"><div id="prog-fill" class="progress-fill"></div></div>
-                <div id="prog-txt" class="progress-txt">0%</div>
-            </div>
-            <div style="margin-top:20px; font-size:0.8rem; color:#888; text-align:center">Validação biométrica concluída. Envie o documento para iniciar a leitura.</div>
-        </div>
-    </div>
     <div id="top-bar">
         <div class="bar-section">
             <div class="status-group"><div id="led-prev" class="status-light"></div> VOLTAR</div>
@@ -234,16 +165,16 @@
         // AREA PARA COLAR O PDF BASE64 (Opcional, se quiser carregar automático)
         const PDF_INTEGRADO = ""; 
 
-        // CONFIGURAÇÕES (VALORES ATUALIZADOS PARA CALIBRAÇÃO FINAL)
+        // CONFIGURAÇÕES
         const CONFIG = {
             SMOOTHING: 0.12, DEAD_ZONE: 0.06, SCROLL_SPEED: 80,
-            BLINK_THRESH: 0.25, OPEN_THRESH: 0.26, // Calibração para máxima tolerância assimétrica
+            BLINK_THRESH: 0.22, OPEN_THRESH: 0.35, 
             MOUTH_OPEN_THRESH: 0.06, MOUTH_CLOSE_THRESH: 0.03,
-            ZOOM_TRIGGER: 0.42, ZOOM_MIN: 1.0, ZOOM_MAX: 1.35, DOUBLE_BLINK_INTERVAL: 900 
+            ZOOM_TRIGGER: 0.42, ZOOM_MIN: 1.0, ZOOM_MAX: 1.35, DOUBLE_BLINK_INTERVAL: 600
         };
 
         const STATE = { 
-            active: false, frozen: false, pdfUrl: null, pdfIntegrated: false, 
+            active: false, frozen: false, pdfUrl: null, 
             rawNoseY: 0, smoothNoseY: 0, targetScroll: 0, currentScale: 1.0, page: 1, 
             lastPageTime: 0, blinkBothCount: 0, lastBlinkBothTime: 0, isBlinkingBoth: false,
             isMouthOpen: false, readingActive: false, lastMouthTime: 0, trainingStep: 0 
@@ -268,35 +199,29 @@
         const step2 = document.getElementById('step-2');
         const step3 = document.getElementById('step-3');
         const step4 = document.getElementById('step-4');
-        
-        // NOVAS REFERÊNCIAS DOM
-        const statusBlink = document.getElementById('status-blink');
-        const statusData = document.getElementById('status-data');
-
 
         window.onload = () => {
             if (PDF_INTEGRADO.length > 50) {
                 STATE.pdfUrl = PDF_INTEGRADO;
-                STATE.pdfIntegrated = true; // Marca como PDF integrado
-                sysStatus.innerText = "Resolução Integrada. Valide a Biometria.";
-                // Marca upload como feito visualmente no novo layer
+                pdfFrame.src = STATE.pdfUrl + "#page=1";
+                sysStatus.innerText = "Resolução Carregada. Inicie a Câmera.";
+                // Marca upload como feito visualmente
                 document.getElementById('upload-icon').innerText = "✅";
                 document.getElementById('upload-text').innerText = "Resolução 454 (Integrada)";
                 dropZone.classList.add('valid');
+                initCamera();
             }
-            // Inicia a câmera imediatamente para a validação biométrica
-            initCamera();
         };
 
         fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = '#00f3ff'; });
         dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = '#444'; });
-        dropZone.addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0])); });
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
 
         function handleFile(file) {
             if(file && file.name.toLowerCase().endsWith('.pdf')) {
                 progressContainer.style.display = "block"; progFill.style.width = "0%"; progTxt.innerText = "0%";
-                document.getElementById('upload-text').innerText = "Carregando Documento...";
+                sysStatus.innerText = "Carregando Documento...";
                 let p = 0;
                 const interval = setInterval(() => {
                     p += 8; progFill.style.width = p + "%"; progTxt.innerText = p + "%";
@@ -310,10 +235,9 @@
             document.getElementById('upload-icon').innerText = "✅";
             document.getElementById('upload-text').innerText = file.name;
             dropZone.classList.add('valid');
-            
-            // Inicia o leitor (HUD)
-            launchReaderHUD();
-            speak("Documento carregado. Leitor ativado.");
+            sysStatus.innerText = "Documento Pronto. Iniciando Câmera...";
+            pdfFrame.src = STATE.pdfUrl + "#page=1";
+            initCamera();
         }
 
         async function initCamera() {
@@ -327,8 +251,7 @@
                 });
                 await camera.start();
                 sysStatus.innerText = "Sistema Ativo. Valide a Biometria.";
-                // Instrução inicial ajustada
-                speak("Sistema iniciado. Por favor, pisque o olho do lado direito da tela para validar.");
+                speak("Sistema iniciado. Por favor, pisque o olho esquerdo para validar.");
             } catch (err) { sysStatus.innerText = "Erro: " + err.message; }
         }
 
@@ -360,33 +283,12 @@
             }
         }
 
-        function launchReaderHUD() {
-            STATE.active = true;
-            document.getElementById('upload-layer').style.display = "none"; // Esconde o Layer de Upload
-            topBar.style.display = "flex"; // Mostra Top Bar
-            
-            // Carrega o PDF
-            if (STATE.pdfUrl) {
-                pdfFrame.src = STATE.pdfUrl + "#page=1";
-            }
-            
-            animate();
-        }
-
         function activateReader() {
-            // Transição da tela de Validação para a tela de Upload/Leitura
-            document.getElementById('setup-layer').style.top = "-100vh"; // Esconde Validação
-
-            if (STATE.pdfIntegrated) {
-                // Se o PDF for integrado (Base64), pula o upload e vai direto para o HUD
-                launchReaderHUD(); 
-                speak("Acesso autorizado. Leitura iniciada.");
-            } else {
-                // Se não for integrado, mostra a tela de upload
-                document.getElementById('upload-layer').style.display = "flex"; // Mostra Upload
-                sysStatus.innerText = "Acesso autorizado. Por favor, carregue o PDF.";
-                speak("Acesso autorizado. Por favor, carregue o documento oficial.");
-            }
+            STATE.active = true;
+            document.getElementById('setup-layer').style.top = "-100vh";
+            topBar.style.display = "flex";
+            speak("Acesso autorizado. Leitura iniciada.");
+            animate();
         }
 
         function onResults(results) {
@@ -408,55 +310,21 @@
             const now = Date.now();
             const dist = (p1, p2) => Math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2);
             
-            // Valores de EAR para o piscar de olhos
-            const earL = (dist(face[159], face[145]) + dist(face[160], face[144])) / (2 * dist(face[33], face[133]));
-            const earR = (dist(face[386], face[374]) + dist(face[385], face[375])) / (2 * dist(face[362], face[263]));
+            const earL = dist(face[159], face[145]) / dist(face[33], face[133]);
+            const earR = dist(face[386], face[374]) / dist(face[362], face[263]);
             const earAvg = (earL + earR) / 2;
             const noseY = face[1].y - 0.5;
             const faceHeight = dist(face[10], face[152]);
             const mouthOpen = dist(face[13], face[14]);
             const mouthRatio = mouthOpen / faceHeight;
 
-            // ======================================================
-            // ATUALIZAÇÃO DO STATUS EM TEMPO REAL (Para feedback imediato)
-            // ======================================================
-            if (statusData) {
-                // Pisca a cor do valor se estiver abaixo do BLINK_THRESH
-                statusData.innerHTML = `EAR L: <span style="color:${earL < CONFIG.BLINK_THRESH ? 'var(--danger)' : '#ccc'}">${earL.toFixed(2)}</span> | EAR R: <span style="color:${earR < CONFIG.BLINK_THRESH ? 'var(--danger)' : '#ccc'}">${earR.toFixed(2)}</span> | Boca: ${mouthRatio.toFixed(2)}`;
-            }
-            if (statusBlink) {
-                let blinkStatus = "Ocular OK";
-                let blinking = false;
-
-                // Mostra o status de detecção de piscar
-                // O Passo 1 ('earL') mapeia para o LADO DIREITO DA TELA
-                if (earL < CONFIG.BLINK_THRESH && earR > CONFIG.OPEN_THRESH) {
-                    blinkStatus = "PISCANDO LADO DIREITO";
-                    blinking = true;
-                // O Passo 2 ('earR') mapeia para o LADO ESQUERDO DA TELA
-                } else if (earR < CONFIG.BLINK_THRESH && earL > CONFIG.OPEN_THRESH) {
-                    blinkStatus = "PISCANDO LADO ESQUERDO";
-                    blinking = true;
-                } else if (earAvg < CONFIG.BLINK_THRESH) {
-                    blinkStatus = "PISCAR DUPLO DETECTADO";
-                    blinking = true;
-                }
-                
-                statusBlink.innerText = blinkStatus;
-                statusBlink.classList.toggle('detected', blinking);
-            }
-            // ======================================================
-
             // TREINO
             if (!STATE.active) {
                 if (STATE.trainingStep === 0) {
-                    // Passo 1: Piscar Esquerdo do usuário (LADO DIREITO DA TELA)
                     if (earL < CONFIG.BLINK_THRESH && earR > CONFIG.OPEN_THRESH) completeStep(1, step1, step2);
                 } else if (STATE.trainingStep === 1) {
-                    // Passo 2: Piscar Direito do usuário (LADO ESQUERDO DA TELA)
                     if (earR < CONFIG.BLINK_THRESH && earL > CONFIG.OPEN_THRESH) completeStep(2, step2, step3);
                 } else if (STATE.trainingStep === 2) {
-                    // Passo 3: Piscar Duplo (Treino)
                     if (earAvg < CONFIG.BLINK_THRESH) { 
                         if (!STATE.isBlinkingBoth) {
                             STATE.isBlinkingBoth = true;
@@ -465,7 +333,6 @@
                         }
                     } else if (earAvg > CONFIG.OPEN_THRESH) STATE.isBlinkingBoth = false;
                 } else if (STATE.trainingStep === 3) {
-                    // Passo 4: Piscar Duplo (Entrar)
                     if (earAvg < CONFIG.BLINK_THRESH) {
                         if (!STATE.isBlinkingBoth) {
                             STATE.isBlinkingBoth = true;
