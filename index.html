@@ -3,130 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitor Facial - Calibração Manual</title>
+    <title>Leitor Facial Estabilizado</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #121212; font-family: 'Segoe UI', sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #0d0d0d; font-family: 'Segoe UI', sans-serif; }
 
         /* ====================
-           1. TELA DE CALIBRAÇÃO
+           1. CALIBRAÇÃO (INTRO)
            ==================== */
         #intro-layer {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: #050505;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #000; z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: opacity 0.8s ease;
         }
-
         #intro-content {
-            position: relative;
-            width: 640px;
-            height: 480px;
-            background-color: #1a1a1a;
-            border: 2px solid #333;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 50px rgba(0, 255, 204, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: relative; width: 640px; height: 480px;
+            border: 2px solid #444; border-radius: 12px; overflow: hidden;
+            display: flex; align-items: center; justify-content: center; background: #222;
         }
-
-        /* Vídeo e Canvas */
         #intro-video, #intro-canvas {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            transform: scaleX(-1); /* Espelhar */
-            object-fit: cover;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            transform: scaleX(-1); object-fit: cover;
         }
-
-        #intro-ui {
-            margin-top: 20px;
-            text-align: center;
-            color: white;
-            z-index: 2001;
-        }
-
-        h1 { margin: 0; font-weight: 300; letter-spacing: 2px; color: #00ffcc; }
-        
-        .status-msg { 
-            font-size: 1.1rem; margin: 15px 0; color: #ffcc00; font-weight: bold; min-height: 25px;
-        }
-
-        /* Botão Grande para Forçar Câmera */
         #btn-start-cam {
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            background: #0077ff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 119, 255, 0.4);
-            transition: 0.2s;
+            margin-top: 20px; padding: 15px 40px; font-size: 1.2rem;
+            background: #0077ff; color: white; border: none; border-radius: 8px; cursor: pointer;
         }
-        #btn-start-cam:hover { background: #0055bb; transform: scale(1.05); }
-
-        /* Bolinhas de Piscar */
-        .blink-status {
-            margin-top: 15px;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            opacity: 0; /* Escondido até a câmera ligar */
-            transition: opacity 0.5s;
-        }
-        .dot {
-            width: 20px; height: 20px;
-            border-radius: 50%;
-            background: #333;
-            border: 1px solid #555;
-            transition: 0.2s;
-        }
-        .dot.active { background: #00ffcc; box-shadow: 0 0 15px #00ffcc; }
+        .blink-dots { display: flex; gap: 10px; margin-top: 15px; }
+        .dot { width: 15px; height: 15px; background: #333; border-radius: 50%; transition: 0.3s; }
+        .dot.active { background: #00ffcc; box-shadow: 0 0 10px #00ffcc; }
 
         /* ====================
-           2. TELA DE LEITURA
+           2. ÁREA DE LEITURA (90% LARGURA)
            ==================== */
         #viewport-container {
-            width: 100vw; height: 100vh;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            overflow-y: scroll; /* Scroll nativo controlado por JS */
             background-color: #1a1a1a;
-            opacity: 0; 
+            scroll-behavior: smooth;
+            opacity: 0; transition: opacity 1s;
         }
 
+        /* O PDF AGORA É GIGANTE E CENTRALIZADO */
         #pdf-wrapper {
-            width: 90vw;
-            height: auto;
+            width: 90%;          /* Ocupa 90% da tela */
+            max-width: 1400px;   /* Limite para monitores ultrawide não esticarem demais */
+            margin: 0 auto;      /* Centraliza horizontalmente */
+            padding-top: 20px;
+            padding-bottom: 500px; /* Espaço extra no fim para ler confortavelmente */
             transform-origin: top center;
-            transition: transform 0.1s linear;
-            margin-top: 20px;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Zoom suave */
         }
-        embed { width: 100%; height: 2000px; display: block; }
-
-        /* UI DE LEITURA */
-        #ui-layer {
-            position: fixed; top: 20px; right: 20px; width: 280px;
-            padding: 20px; background: rgba(30, 30, 30, 0.9);
-            border-radius: 12px; border-left: 4px solid #00ffcc;
-            color: #ececec; display: none;
-        }
-        .indicator { width: 10px; height: 10px; border-radius: 50%; background: #555; display: inline-block; margin-right: 5px; }
-        .indicator.active { background: #00ffcc; }
         
+        embed { width: 100%; height: 2500px; display: block; background: white; }
+
+        /* ====================
+           3. PAINEL DE CONTROLE VISUAL (HUD)
+           ==================== */
+        #hud-panel {
+            position: fixed; top: 50%; right: 20px; transform: translateY(-50%);
+            width: 220px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            z-index: 1000;
+            display: none; /* Aparece na leitura */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .hud-section { margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+        .hud-label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .hud-value { font-size: 1.1rem; font-weight: bold; color: #00ffcc; }
+        
+        /* Barra de Força da Rolagem */
+        .scroll-meter {
+            width: 100%; height: 10px; background: #333; border-radius: 5px; position: relative; overflow: hidden; margin-top: 5px;
+        }
+        .scroll-bar {
+            width: 50%; height: 100%; background: #0077ff; position: absolute; left: 25%; transition: width 0.1s, left 0.1s;
+        }
+        /* Centro da barra (zona morta) */
+        .scroll-center-marker {
+            position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: white; transform: translateX(-50%); z-index: 2;
+        }
+
+        .icon-row { display: flex; justify-content: space-between; }
+        .icon-box { text-align: center; opacity: 0.3; transition: 0.2s; }
+        .icon-box.active { opacity: 1; color: #00ffcc; text-shadow: 0 0 10px #00ffcc; }
+        .icon-icon { font-size: 1.5rem; display: block; }
+        .icon-text { font-size: 0.7rem; }
+
+        /* Mira Central */
         #crosshair {
-            position: fixed; top: 50%; left: 50%; width: 8px; height: 8px;
-            background: rgba(255, 0, 0, 0.4); border-radius: 50%;
-            transform: translate(-50%, -50%); display: none;
+            position: fixed; top: 50%; left: 50%; width: 6px; height: 6px;
+            background: rgba(255, 0, 0, 0.5); border-radius: 50%;
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 1500; display: none;
         }
     </style>
 
@@ -139,89 +113,8 @@
 
     <div id="intro-layer">
         <div id="intro-content">
-            <div id="placeholder-text" style="color: #555;">Aguardando Câmera...</div>
+            <div style="color:#666">Aguardando Câmera...</div>
             <video id="intro-video" playsinline></video>
             <canvas id="intro-canvas"></canvas>
         </div>
-        
-        <div id="intro-ui">
-            <h1>CALIBRAÇÃO FACIAL</h1>
-            
-            <div style="margin-top: 20px;">
-                <button id="btn-start-cam" onclick="startSystem()">LIGAR CÂMERA</button>
-            </div>
-
-            <div id="cam-status" class="status-msg">Clique acima para iniciar</div>
-
-            <div id="blink-ui" class="blink-status">
-                <div style="color: #aaa; margin-bottom: 5px; width: 100%;">Pisque 2x para entrar</div>
-                <div id="dot1" class="dot"></div>
-                <div id="dot2" class="dot"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="crosshair"></div>
-    <div id="viewport-container">
-        <div id="pdf-wrapper">
-            <embed id="pdf-embed" src="https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf#page=1" type="application/pdf">
-        </div>
-    </div>
-
-    <div id="ui-layer">
-        <h2 style="margin:0 0 10px 0; font-size:1rem; color:#00ffcc;">LEITOR ATIVO</h2>
-        <div style="font-size: 0.8rem; line-height: 1.6;">
-            <div><span id="ind-scroll" class="indicator"></span> Rolagem (Cabeça)</div>
-            <div><span id="ind-page" class="indicator"></span> Pág (Piscar Dir/Esq)</div>
-            <hr style="border-color: #444;">
-            <div style="opacity: 0.7;">Olhos fechados (2.5s) trava tela.</div>
-        </div>
-    </div>
-
-    <script>
-        // CONFIGURAÇÕES
-        const CONFIG = {
-            BLINK_THRESHOLD: 0.20, NEUTRAL_OPEN: 0.35,
-            DOUBLE_BLINK_SPEED: 800,
-            DEAD_ZONE_Y: 0.08, SCROLL_SPEED: 25,
-            INITIAL_ZOOM: 1.0, MAX_ZOOM: 1.25
-        };
-
-        const STATE = {
-            mode: 'SETUP', // SETUP -> CALIBRATION -> READING
-            blinkCount: 0, lastBlinkTime: 0, isBlinking: false,
-            currentScale: CONFIG.INITIAL_ZOOM, targetScale: CONFIG.INITIAL_ZOOM,
-            scrollVelocityY: 0, currentPage: 1, lastNavTime: 0
-        };
-
-        // DOM
-        const statusMsg = document.getElementById('cam-status');
-        const btnStart = document.getElementById('btn-start-cam');
-        const blinkUI = document.getElementById('blink-ui');
-        const introLayer = document.getElementById('intro-layer');
-        const introVideo = document.getElementById('intro-video');
-        const introCanvas = document.getElementById('intro-canvas');
-        const introCtx = introCanvas.getContext('2d');
-        const dot1 = document.getElementById('dot1');
-        const dot2 = document.getElementById('dot2');
-        
-        // Função Iniciadora (Chamada pelo Botão)
-        function startSystem() {
-            btnStart.style.display = 'none'; // Some o botão
-            statusMsg.innerText = "Solicitando Permissão da Câmera...";
-            statusMsg.style.color = "white";
-
-            // Inicializa a IA
-            const faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
-            faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-            faceMesh.onResults(onResults);
-
-            // Inicia a Câmera
-            const camera = new Camera(introVideo, {
-                onFrame: async () => { await faceMesh.send({image: introVideo}); },
-                width: 640, height:
+        <div style="text-align:center; margin-top:20px; color
